@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Command;
 
+use App\Dto\ImportGithubEventsCommandInput;
 use App\Service\GithubEventsImporter;
 use Exception;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -15,14 +16,14 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[AsCommand(
-    name: 'app:import-github-events',
-    description: 'Import GH events'
+    name: 'app:import-github-events-from-archive',
+    description: 'Import GH events from GitHub archive'
 )]
-class ImportGitHubEventsCommand extends Command
+class ImportGitHubEventsFromGitHubArchiveCommand extends Command
 {
     public function __construct(
         private ValidatorInterface $validator,
-        private GithubEventsImporter $gitHubEventImporter
+        private GithubEventsImporter $gitHubEventImporter,
     )
     {
         parent::__construct();
@@ -31,7 +32,8 @@ class ImportGitHubEventsCommand extends Command
     protected function configure(): void
     {
         $this
-            ->addArgument('file', InputArgument::REQUIRED, 'The location or url of the file from which to import the events')
+            ->addArgument('date', InputArgument::REQUIRED, 'The date of the events to import')
+            ->addArgument('hour', InputArgument::REQUIRED, 'The hour of the events to import')
         ;
     }
 
@@ -39,8 +41,25 @@ class ImportGitHubEventsCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
 
+        // Validation of arguments
+        $importOptions = new ImportGithubEventsCommandInput(
+            $input->getArgument('date'),
+            (int) $input->getArgument('hour')
+        );
+
+        $violations = $this->validator->validate($importOptions);
+        if(count($violations) > 0) {
+            foreach($violations as $violation) {
+                $io->error($violation->getMessage());
+            }
+            return Command::FAILURE;
+        }
+
+        // Github archive url of the file to import
+        $githubArchiveUrl = "https://data.gharchive.org/{$importOptions->date}-{$importOptions->hour}.json.gz";
+
         try {
-            $this->gitHubEventImporter->importFromFile(source: $input->getArgument('file'), onProgress: function() use ($io) {
+            $this->gitHubEventImporter->importFromFile(source: $githubArchiveUrl, onProgress: function() use ($io) {
                 $memoryUsageInMB = memory_get_usage(true) / 1024 / 1024;
                 $peakMemoryInMB = memory_get_peak_usage(true) / 1024 / 1024;
                 $io->info("Memory usage: $memoryUsageInMB MB, Peak memory usage: $peakMemoryInMB MB");

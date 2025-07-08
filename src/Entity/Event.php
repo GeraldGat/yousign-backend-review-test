@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Webmozart\Assert\Assert;
 
 /**
  * @ORM\Entity()
@@ -28,18 +27,13 @@ class Event
     private string $type;
 
     /**
-     * @ORM\Column(type="integer", nullable=false)
-     */
-    private int $count = 1;
-
-    /**
-     * @ORM\ManyToOne(targetEntity="App\Entity\Actor", cascade={"persist"})
+     * @ORM\ManyToOne(targetEntity="App\Entity\Actor")
      * @ORM\JoinColumn(name="actor_id", referencedColumnName="id")
      */
     private Actor $actor;
 
     /**
-     * @ORM\ManyToOne(targetEntity="App\Entity\Repo", cascade={"persist"})
+     * @ORM\ManyToOne(targetEntity="App\Entity\Repo")
      * @ORM\JoinColumn(name="repo_id", referencedColumnName="id")
      */
     private Repo $repo;
@@ -54,12 +48,7 @@ class Event
      */
     private \DateTimeImmutable $createAt;
 
-    /**
-     * @ORM\Column(type="text", nullable=true)
-     */
-    private ?string $comment;
-
-    public function __construct(int $id, string $type, Actor $actor, Repo $repo, array $payload, \DateTimeImmutable $createAt, ?string $comment)
+    public function __construct(int $id, string $type, Actor $actor, Repo $repo, array $payload, \DateTimeImmutable $createAt)
     {
         $this->id = $id;
         EventType::assertValidChoice($type);
@@ -68,11 +57,6 @@ class Event
         $this->repo = $repo;
         $this->payload = $payload;
         $this->createAt = $createAt;
-        $this->comment = $comment;
-
-        if ($type === EventType::COMMIT) {
-            $this->count = $payload['size'] ?? 1;
-        }
     }
 
     public function id(): int
@@ -83,6 +67,11 @@ class Event
     public function type(): string
     {
         return $this->type;
+    }
+
+    public function count(): int
+    {
+        return (int) $this->payload['size'] ?? 1;
     }
 
     public function actor(): Actor
@@ -105,8 +94,8 @@ class Event
         return $this->createAt;
     }
 
-    public function getComment(): ?string
+    public function comment(): ?string
     {
-        return $this->comment;
+        return $this->payload['comment'] ?? null;
     }
 }

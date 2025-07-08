@@ -19,7 +19,7 @@ class EventFixtures extends Fixture
     {
         $event = new Event(
             self::EVENT_1_ID,
-            EventType::COMMENT,
+            EventType::COMMIT_COMMENT,
             new Actor(
                 self::ACTOR_1_ID,
                 'jdoe',
