@@ -43,7 +43,9 @@ class ImportGitHubEventsCommand extends Command
             $this->gitHubEventImporter->importFromFile(source: $input->getArgument('file'), onProgress: function() use ($io) {
                 $memoryUsageInMB = memory_get_usage(true) / 1024 / 1024;
                 $peakMemoryInMB = memory_get_peak_usage(true) / 1024 / 1024;
-                $io->info("Memory usage: $memoryUsageInMB MB, Peak memory usage: $peakMemoryInMB MB");
+                $io->section("A batch has been completed");
+                $io->text("Memory usage: $memoryUsageInMB MB, Peak memory usage: $peakMemoryInMB MB");
+                $io->text("Object in memory: " . count(get_declared_classes()));
             });
         } catch (Exception $e) {
             $io->error('An error occurred while importing the events: ' . $e->getMessage());

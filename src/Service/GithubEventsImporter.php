@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Entity\Actor;
-use App\Entity\Event;
 use App\Entity\Repo;
 use App\Repository\ReadActorRepository;
 use App\Repository\ReadEventRepository;
 use App\Repository\ReadRepoRepository;
+use App\Repository\WriteActorRepository;
+use App\Repository\WriteEventRepository;
+use App\Repository\WriteRepoRepository;
 use DateTimeInterface;
-use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Throwable;
@@ -19,18 +20,19 @@ use Throwable;
 class GithubEventsImporter
 {
     private int $cacheMaxSize = 500;
-    private array $actorCache = [];
-    private array $repoCache = [];
+    private array $actorIdCache = [];
+    private array $repoIdCache = [];
 
     public function __construct(
-        private readonly EntityManagerInterface $entityManager,
         private readonly ReadEventRepository $readEventRepository,
         private readonly ReadActorRepository $readActorRepository,
         private readonly ReadRepoRepository $readRepoRepository,
+        private readonly WriteEventRepository $writeEventRepository,
+        private readonly WriteActorRepository $writeActorRepository,
+        private readonly WriteRepoRepository $writeRepoRepository,
         private readonly LoggerInterface $logger,
     )
     {
-        ini_set('memory_limit', '1G');
     }
 
     public function importFromFile(string $source, int $batchSize = 1000, ?callable $onProgress = null): void
@@ -60,37 +62,34 @@ class GithubEventsImporter
                 }
 
                 try {
-                    if (count($this->actorCache) + count($this->repoCache) > $this->cacheMaxSize) {
+                    if (count($this->actorIdCache) + count($this->repoIdCache) > $this->cacheMaxSize) {
                         $this->clearCache();
                     }
 
-                    $actor = $this->getOrCreateActor($eventData['actor']);
-                    $repo = $this->getOrCreateRepo($eventData['repo']);
+                    $actorId = $this->createIfActorDontExist($eventData['actor']);
+                    $repoId = $this->createIfRepoDontExist($eventData['repo']);
 
                     $eventId = (int) $eventData['id'];
                     
                     if($this->readEventRepository->exist($eventId)) {
-                        unset($eventData, $actor, $repo);
+                        unset($eventData, $eventId, $actorId, $repoId);
                         continue;
                     }
 
-                    $event = new Event(
+                    $this->writeEventRepository->create(
                         $eventId,
                         $eventData['type'],
-                        $actor,
-                        $repo,
+                        $actorId,
+                        $repoId,
                         (array) $eventData['payload'],
                         \DateTimeImmutable::createFromFormat(DateTimeInterface::ISO8601_EXPANDED, $eventData['created_at'])
                     );
-
-                    $this->entityManager->persist($event);
                     $batchIndex++;
 
-                    unset($eventData, $event, $actor, $repo);
+                    unset($eventData, $eventId, $actorId, $repoId, $event);
 
                     if($batchIndex % $batchSize === 0) {
-                        $this->flushBatch($onProgress);
-                        $batchIndex = 0;
+                        $this->clear($onProgress);
                     }
                 } catch(Throwable $e) {
                     $this->logger->error("Failed to import event at line $currentLine: {$e->getMessage()}");
@@ -100,56 +99,48 @@ class GithubEventsImporter
             }
 
             if($batchIndex > 0) {
-                $this->flushBatch($onProgress);
+                $this->clear($onProgress);
             }
         } finally {
             gzclose($stream);
         }
     }
 
-    private function getOrCreateActor(array $actorData): Actor
+    private function createIfActorDontExist(array $actorData): int
     {
-        $actorId = $actorData['id'];
+        $actorId = (int) $actorData['id'];
         
-        if(!array_key_exists($actorId, $this->actorCache)) {
-            $actor = $this->readActorRepository->find($actorId);
-            if($actor === null) {
+        if(!array_key_exists($actorId, $this->actorIdCache)) {
+            $actorExist = $this->readActorRepository->exist($actorId);
+            if($actorExist === false) {
                 $actor = Actor::fromArray($actorData);
-                $this->entityManager->persist($actor);
+                $this->writeActorRepository->create($actor);
             }
-            $this->actorCache[$actorId] = $actor;
+            $this->actorIdCache[$actorId] = $actorId;
         }
         
-        return $this->actorCache[$actorId];
+        return $actorId;
     }
 
-    private function getOrCreateRepo(array $repoData): Repo
+    private function createIfRepoDontExist(array $repoData): int
     {
-        $repoId = $repoData['id'];
+        $repoId = (int) $repoData['id'];
         
-        if(!array_key_exists($repoId, $this->repoCache)) {
-            $repo = $this->readRepoRepository->find($repoId);
-            if($repo === null) {
+        if(!array_key_exists($repoId, $this->repoIdCache)) {
+            $repoExist = $this->readRepoRepository->exist($repoId);
+            if($repoExist === false) {
                 $repo = Repo::fromArray($repoData);
-                $this->entityManager->persist($repo);
+                $this->writeRepoRepository->create($repo);
             }
-            $this->repoCache[$repoId] = $repo;
+            $this->repoIdCache[$repoId] = $repoId;
         }
         
-        return $this->repoCache[$repoId];
+        return $this->repoIdCache[$repoId];
     }
 
-    private function flushBatch(?callable $onProgress = null): void
+    private function clear(?callable $onProgress = null): void
     {
-        try {
-            $this->entityManager->flush();
-        } catch (Throwable $e) {
-            $this->logger->error("Failed to flush batch: {$e->getMessage()}");
-            throw $e;
-        }
-        
         $this->clearCache();
-        $this->entityManager->clear();
         
         if (function_exists('gc_collect_cycles')) {
             gc_collect_cycles();
@@ -162,8 +153,8 @@ class GithubEventsImporter
 
     private function clearCache(): void
     {
-        unset($this->actorCache, $this->repoCache);
-        $this->actorCache = [];
-        $this->repoCache = [];
+        unset($this->actorIdCache, $this->repoIdCache);
+        $this->actorIdCache = [];
+        $this->repoIdCache = [];
     }
 }
