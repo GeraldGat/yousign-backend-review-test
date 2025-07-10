@@ -19,3 +19,12 @@
 ###< phpunit/phpunit ###
 
 .idea
+
+###> vscode env ###
+.vscode
+.trunk
+###< vscode env ###
+
+###> debug folder ###
+/debug
+###< debug folder ###

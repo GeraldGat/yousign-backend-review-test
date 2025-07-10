@@ -1,4 +1,4 @@
-FROM php:8.3-fpm-alpine
+FROM php:8.3-fpm-alpine as App
 
 # Install composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -40,3 +40,16 @@ EXPOSE 8000
 WORKDIR /app
 ENTRYPOINT ["fixuid", "-q"]
 CMD ["symfony", "server:start", "--port=8000"]
+
+From app as dev
+
+ENV XDEBUG_MODE=off
+
+USER root
+
+RUN apk add --no-cache autoconf g++ make linux-headers
+RUN pecl install xdebug \
+    && docker-php-ext-enable xdebug
+USER docker:docker
+
+COPY ../php/conf.d/xdebug.ini $PHP_INI_DIR/conf.d/xdebug.ini

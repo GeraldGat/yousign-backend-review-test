@@ -24,7 +24,8 @@ CURRENT_USER := $(shell id -u)
 CURRENT_GROUP := $(shell id -g)
 
 TTY   := $(shell tty -s || echo '-T')
-DOCKER_COMPOSE := FIXUID=$(CURRENT_USER) FIXGID=$(CURRENT_GROUP) docker compose
+DOCKER_COMPOSE := FIXUID=$(CURRENT_USER) FIXGID=$(CURRENT_GROUP) docker compose -f compose.yml
+DOCKER_COMPOSE_DEV := XDEBUG_MODE=debug,profile FIXUID=$(CURRENT_USER) FIXGID=$(CURRENT_GROUP) docker compose -f compose.dev.yml
 PHP_RUN := $(DOCKER_COMPOSE) run $(TTY) --no-deps --rm php
 PHP_EXEC := $(DOCKER_COMPOSE) exec $(TTY) php
 
@@ -38,6 +39,13 @@ var/docker.build: docker/Dockerfile
 	@$(call log,Building docker images ...)
 	@$(DOCKER_COMPOSE) build
 	@$(call touch,var/docker.build)
+	@$(call log_success,Done)
+
+build_dev: var/docker.build.dev ## Build the docker stack in dev mode
+var/docker.build.dev: docker/Dockerfile
+	@$(call log,Building docker images in dev mode ...)
+	@$(DOCKER_COMPOSE_DEV) build
+	@$(call touch,var/docker.build.dev)
 	@$(call log_success,Done)
 
 .PHONY: pull
@@ -60,11 +68,26 @@ var/docker.up: var/docker.build vendor
 	@$(call log,API available at: http://127.0.0.1:8000/)
 	@$(call log_success,Done)
 
+.PHONY: shell_dev
+shell_dev: start_dev ## Enter in the PHP container (dev)
+	@$(call log,Entering inside php container (dev) ...)
+	@$(DOCKER_COMPOSE_DEV) exec php bash
+
+start_dev: var/docker.up.dev ## Start the docker stack in dev mode
+var/docker.up.dev: var/docker.build.dev vendor
+	@$(call log,Starting the docker stack in dev mode ...)
+	@$(DOCKER_COMPOSE_DEV) up -d
+	@$(call touch,var/docker.up.dev)
+	$(MAKE) db
+	@$(call log,API available at: http://127.0.0.1:8000/)
+	@$(call log_success,Done)
+
 .PHONY: stop
 stop: ## Stop the docker stack
 	@$(call log,Stopping the docker stack ...)
 	@$(DOCKER_COMPOSE) stop
 	@rm -rf var/docker.up
+	@rm -rf var/docker.up.dev
 	@$(call log_success,Done)
 
 .PHONY: clean

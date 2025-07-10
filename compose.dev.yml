@@ -4,13 +4,17 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-      target: app
+      target: dev
     ports:
       - "8000:8000"
     volumes:
       - .:/app
+      - ./php/conf.d/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini:ro
     environment:
       COMPOSER_HOME: /tmp/composer
+      XDEBUG_MODE: "${XDEBUG_MODE:-off}"
+    extra_hosts:
+      - host.docker.internal:host-gateway
     depends_on:
       - database
 
