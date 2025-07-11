@@ -48,7 +48,12 @@ class Event
      */
     private \DateTimeImmutable $createAt;
 
-    public function __construct(int $id, string $type, Actor $actor, Repo $repo, array $payload, \DateTimeImmutable $createAt)
+    /**
+     * @ORM\Column(type="text", nullable=true)
+     */
+    private ?string $comment;
+
+    public function __construct(int $id, string $type, Actor $actor, Repo $repo, array $payload, \DateTimeImmutable $createAt, ?string $comment)
     {
         $this->id = $id;
         EventType::assertValidChoice($type);
@@ -57,6 +62,7 @@ class Event
         $this->repo = $repo;
         $this->payload = $payload;
         $this->createAt = $createAt;
+        $this->comment = $comment;
     }
 
     public function id(): int
@@ -96,6 +102,6 @@ class Event
 
     public function comment(): ?string
     {
-        return $this->payload['comment'] ?? null;
+        return $this->comment;
     }
 }
