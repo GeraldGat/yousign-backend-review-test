@@ -101,7 +101,7 @@ vendor: var/docker.build composer.json composer.lock ## Install composer depende
 	@$(call log,Installing vendor ...)
 	@mkdir -p vendor
 	@$(PHP_RUN) composer install
-	@$(call log_success,Done)
+	@$(call touch,vendor)
 
 .PHONY: db
 db: var/docker.build
