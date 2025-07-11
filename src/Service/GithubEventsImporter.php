@@ -66,12 +66,12 @@ class GithubEventsImporter
                         $this->clearCache();
                     }
 
-                    $actorId = $this->createIfActorDontExist($eventData['actor']);
-                    $repoId = $this->createIfRepoDontExist($eventData['repo']);
+                    $actorId = $this->createIfActorDoesNotExist($eventData['actor']);
+                    $repoId = $this->createIfRepoDoesNotExist($eventData['repo']);
 
                     $eventId = (int) $eventData['id'];
                     
-                    if($this->readEventRepository->exist($eventId)) {
+                    if($this->readEventRepository->exists($eventId)) {
                         unset($eventData, $eventId, $actorId, $repoId);
                         continue;
                     }
@@ -106,12 +106,12 @@ class GithubEventsImporter
         }
     }
 
-    private function createIfActorDontExist(array $actorData): int
+    private function createIfActorDoesNotExist(array $actorData): int
     {
         $actorId = (int) $actorData['id'];
         
         if(!array_key_exists($actorId, $this->actorIdCache)) {
-            $actorExist = $this->readActorRepository->exist($actorId);
+            $actorExist = $this->readActorRepository->exists($actorId);
             if($actorExist === false) {
                 $actor = Actor::fromArray($actorData);
                 $this->writeActorRepository->create($actor);
@@ -122,12 +122,12 @@ class GithubEventsImporter
         return $actorId;
     }
 
-    private function createIfRepoDontExist(array $repoData): int
+    private function createIfRepoDoesNotExist(array $repoData): int
     {
         $repoId = (int) $repoData['id'];
         
         if(!array_key_exists($repoId, $this->repoIdCache)) {
-            $repoExist = $this->readRepoRepository->exist($repoId);
+            $repoExist = $this->readRepoRepository->exists($repoId);
             if($repoExist === false) {
                 $repo = Repo::fromArray($repoData);
                 $this->writeRepoRepository->create($repo);

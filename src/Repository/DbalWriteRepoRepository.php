@@ -7,11 +7,10 @@ use Doctrine\DBAL\Connection;
 
 class DbalWriteRepoRepository implements WriteRepoRepository
 {
-    private Connection $connection;
-
-    public function __construct(Connection $connection)
+    public function __construct(
+        private readonly Connection $connection
+    )
     {
-        $this->connection = $connection;
     }
 
     public function create(Repo $repo): void
@@ -21,9 +20,9 @@ class DbalWriteRepoRepository implements WriteRepoRepository
         VALUES (:id, :name, :url)
 SQL;
         $this->connection->executeQuery($sql, [
-            'id' => $repo->id(),
-            'name' => $repo->name(),
-            'url' => $repo->url(),
+            'id' => $repo->getId(),
+            'name' => $repo->getName(),
+            'url' => $repo->getUrl(),
         ]);
     }
 }

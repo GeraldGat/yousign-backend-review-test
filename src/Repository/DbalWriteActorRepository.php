@@ -7,11 +7,10 @@ use Doctrine\DBAL\Connection;
 
 class DbalWriteActorRepository implements WriteActorRepository
 {
-    private Connection $connection;
-
-    public function __construct(Connection $connection)
+    public function __construct(
+        private readonly Connection $connection
+    )
     {
-        $this->connection = $connection;
     }
 
     public function create(Actor $actor): void
@@ -21,10 +20,10 @@ class DbalWriteActorRepository implements WriteActorRepository
         VALUES (:id, :login, :url, :avatar_url)
 SQL;
         $this->connection->executeQuery($sql, [
-            'id' => $actor->id(),
-            'login' => $actor->login(),
-            'url' => $actor->url(),
-            'avatar_url' => $actor->avatarUrl(),
+            'id' => $actor->getId(),
+            'login' => $actor->getLogin(),
+            'url' => $actor->getUrl(),
+            'avatar_url' => $actor->getAvatarUrl(),
         ]);
     }
 }

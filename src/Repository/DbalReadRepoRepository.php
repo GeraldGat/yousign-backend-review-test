@@ -9,8 +9,8 @@ use Doctrine\ORM\EntityManagerInterface;
 class DbalReadRepoRepository implements ReadRepoRepository
 {
     public function __construct(
-        private EntityManagerInterface $entityManager,
-        private Connection $connection,
+        private readonly EntityManagerInterface $entityManager,
+        private readonly Connection $connection
     )
     {}
 
@@ -19,7 +19,7 @@ class DbalReadRepoRepository implements ReadRepoRepository
         return $this->entityManager->find(Repo::class, $id);
     }
 
-    public function exist(int $id): bool
+    public function exists(int $id): bool
     {
         $sql = <<<SQL
             SELECT 1
