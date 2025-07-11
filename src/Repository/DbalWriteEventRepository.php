@@ -3,18 +3,14 @@
 namespace App\Repository;
 
 use App\Dto\EventInput;
-use App\Dto\SearchInput;
-use App\Entity\Event;
 use Doctrine\DBAL\Connection;
-use phpDocumentor\Reflection\DocBlock\Tags\Author;
 
 class DbalWriteEventRepository implements WriteEventRepository
 {
-    private Connection $connection;
-
-    public function __construct(Connection $connection)
+    public function __construct(
+        private readonly Connection $connection
+    )
     {
-        $this->connection = $connection;
     }
 
     public function create(
@@ -23,7 +19,7 @@ class DbalWriteEventRepository implements WriteEventRepository
         int $actorId,
         int $repoId,
         array $jsonPayload,
-        \DateTimeImmutable $createAt,
+        \DateTimeImmutable $createAt
     ): void
     {
         $sql = <<<SQL

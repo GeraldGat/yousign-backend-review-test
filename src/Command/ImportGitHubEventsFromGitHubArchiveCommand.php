@@ -23,7 +23,7 @@ class ImportGitHubEventsFromGitHubArchiveCommand extends Command
 {
     public function __construct(
         private ValidatorInterface $validator,
-        private GithubEventsImporter $gitHubEventImporter,
+        private GithubEventsImporter $gitHubEventImporter
     )
     {
         parent::__construct();

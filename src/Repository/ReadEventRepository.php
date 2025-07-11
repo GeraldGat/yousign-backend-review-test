@@ -10,5 +10,5 @@ interface ReadEventRepository
     public function countByType(SearchInput $searchInput): array;
     public function statsByTypePerHour(SearchInput $searchInput): array;
     public function getLatest(SearchInput $searchInput): array;
-    public function exist(int $id): bool;
+    public function exists(int $id): bool;
 }

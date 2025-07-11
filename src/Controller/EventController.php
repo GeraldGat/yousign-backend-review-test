@@ -14,37 +14,30 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class EventController
 {
-    private WriteEventRepository $writeEventRepository;
-    private ReadEventRepository $readEventRepository;
-    private SerializerInterface $serializer;
-
     public function __construct(
-        WriteEventRepository $writeEventRepository,
-        ReadEventRepository $readEventRepository,
-        SerializerInterface $serializer
-    ) {
-        $this->writeEventRepository = $writeEventRepository;
-        $this->readEventRepository = $readEventRepository;
-        $this->serializer = $serializer;
+        private readonly WriteEventRepository $writeEventRepository,
+        private readonly ReadEventRepository $readEventRepository,
+        private readonly SerializerInterface $serializer
+    )
+    {
     }
 
-    /**
-     * @Route(path="/api/event/{id}/update", name="api_commit_update", methods={"PUT"})
-     */
+    #[Route('/api/event/{id}/update', name: 'api_commit_update', methods: ['PUT'])]
     public function update(Request $request, int $id, ValidatorInterface $validator): Response
     {
+        /** @var EventInput $eventInput */
         $eventInput = $this->serializer->deserialize($request->getContent(), EventInput::class, 'json');
 
         $errors = $validator->validate($eventInput);
 
-        if (\count($errors) > 0) {
+        if (count($errors) > 0) {
             return new JsonResponse(
                 ['message' => $errors->get(0)->getMessage()],
                 Response::HTTP_BAD_REQUEST
             );
         }
 
-        if($this->readEventRepository->exist($id) === false) {
+        if($this->readEventRepository->exists($id) === false) {
             return new JsonResponse(
                 ['message' => sprintf('Event identified by %d not found !', $id)],
                 Response::HTTP_NOT_FOUND
@@ -53,7 +46,7 @@ class EventController
 
         try {
             $this->writeEventRepository->update($eventInput, $id);
-        } catch (\Exception $exception) {
+        } catch (\Throwable) {
             return new Response(null, Response::HTTP_SERVICE_UNAVAILABLE);
         }
 

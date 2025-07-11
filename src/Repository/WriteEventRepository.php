@@ -13,7 +13,7 @@ interface WriteEventRepository
         int $actorId,
         int $repoId,
         array $payload,
-        \DateTimeImmutable $createAt,
+        \DateTimeImmutable $createAt
     ): void;
     public function update(EventInput $authorInput, int $id): void;
 }
