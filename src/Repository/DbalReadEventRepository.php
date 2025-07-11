@@ -17,10 +17,14 @@ class DbalReadEventRepository implements ReadEventRepository
     public function countAll(SearchInput $searchInput): int
     {
         $sql = <<<SQL
-        SELECT sum(count) as count
-        FROM event
-        WHERE date(create_at) = :date
-        AND payload like %{$searchInput->keyword}%
+            SELECT sum(
+                case
+                    WHEN (payload->>'size') IS NOT NULL THEN (payload->>'size')::int
+                    ELSE 1
+            ) as count
+            FROM event
+            WHERE date(create_at) = :date
+            AND payload like %{$searchInput->keyword}%
 SQL;
 
         return (int) $this->connection->fetchOne($sql, [
@@ -31,7 +35,11 @@ SQL;
     public function countByType(SearchInput $searchInput): array
     {
         $sql = <<<'SQL'
-            SELECT type, sum(count) as count
+            SELECT type, sum(
+                case
+                    WHEN (payload->>'size') IS NOT NULL THEN (payload->>'size')::int
+                    ELSE 1
+            ) as count
             FROM event
             WHERE date(create_at) = :date
             AND payload like %{$searchInput->keyword}%
@@ -46,14 +54,18 @@ SQL;
     public function statsByTypePerHour(SearchInput $searchInput): array
     {
         $sql = <<<SQL
-            SELECT extract(hour from create_at) as hour, type, sum(count) as count
+            SELECT extract(hour from create_at) as hour, type, sum(
+                case
+                    WHEN (payload->>'size') IS NOT NULL THEN (payload->>'size')::int
+                    ELSE 1
+            ) as count
             FROM event
             WHERE date(create_at) = :date
             AND payload like %{$searchInput->keyword}%
             GROUP BY TYPE, EXTRACT(hour from create_at)
 SQL;
 
-        $stats = $this->connection->fetchAll($sql, [
+        $stats = $this->connection->fetchAllAssociative($sql, [
             'date' => $searchInput->date
         ]);
 
